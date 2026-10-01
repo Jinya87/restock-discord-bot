@@ -26,6 +26,17 @@ class StockSafetyTests(unittest.TestCase):
     def test_hmall_purchase_signal(self):
         self.assertTrue(hmall_status('구매하기', '시간의 오카리나 아크릴 특전', True))
 
+    def test_hmall_sold_out_overrides_purchase_button(self):
+        for text in ['품절되었습니다 구매하기', '일시 품절 바로구매', '품절 구매하기']:
+            with self.subTest(text=text):
+                self.assertFalse(hmall_status(text, '시간의 오카리나 아크릴 특전', True))
+
+    def test_hmall_suspended_overrides_purchase_button(self):
+        self.assertFalse(hmall_status('현재 판매가 중단된 상품입니다. 구매하기', '시간의 오카리나 아크릴 특전', True))
+
+    def test_hmall_sold_out_without_button(self):
+        self.assertFalse(hmall_status('품절되었습니다', '시간의 오카리나 아크릴 특전', False))
+
     def test_restock_and_no_duplicate(self):
         self.assertEqual(newly_available({'hmall': False}, {'hmall': True}), ['hmall'])
         self.assertEqual(newly_available({'hmall': True}, {'hmall': True}), [])
