@@ -1,0 +1,63 @@
+name: Restock Watch
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run = 조회만 / test-webhook = 연결 테스트 / check = 재고 확인+알림'
+        type: choice
+        options: [dry-run, test-webhook, check]
+        default: dry-run
+  push:
+    paths: ['monitor.py', 'test_monitor.py', 'requirements.txt', '.github/workflows/check.yml']
+permissions:
+  contents: write
+concurrency:
+  group: restock-watch
+  cancel-in-progress: false
+jobs:
+  watch:
+    # Scheduled runs are disabled while private to avoid billed minutes.
+    if: github.event_name != 'schedule' || github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest -v
+      - name: Install browser
+        if: github.event_name != 'push'
+        run: python -m playwright install --with-deps chromium
+      - name: Check stock or test Discord
+        if: github.event_name != 'push'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "dry-run" ]; then
+            python monitor.py --dry-run
+          elif [ "$MODE" = "test-webhook" ]; then
+            python monitor.py --test-webhook
+          elif [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo '::error::DISCORD_WEBHOOK_URL Secret 등록 전에는 감시를 실행하지 않습니다.'
+            exit 1
+          else
+            python monitor.py
+          fi
+      - name: Save stock state after confirmed observations
+        if: always() && github.event_name != 'push' && inputs.mode != 'dry-run' && inputs.mode != 'test-webhook'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stock-state.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Save latest stock observations'
+            git push origin HEAD:main
+          fi
