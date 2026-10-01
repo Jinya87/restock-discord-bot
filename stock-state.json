@@ -2,9 +2,9 @@
   "stock": {
     "kurly:desk": false,
     "kurly:key": false,
-    "hmall": true
+    "hmall": false
   },
   "baseline_observed": "2026-10-01 Asia/Seoul",
-  "last_check_utc": "2026-10-01T15:34:37.816026+00:00",
+  "last_check_utc": "2026-10-01T15:43:54.807918+00:00",
   "failed_shops": []
 }
