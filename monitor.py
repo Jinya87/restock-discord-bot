@@ -38,7 +38,7 @@ def hmall_status(text, title, buy_enabled):
         return False
     if '시간의 오카리나' not in title or '아크릴' not in title:
         raise ValueError('현대Hmall 상품 확인 실패')
-    if '품절' in text and not buy_enabled:
+    if '품절' in text:
         return False
     if buy_enabled:
         return True
@@ -73,8 +73,10 @@ def check_kurly(page):
     return kurly_rows(records)
 
 def check_hmall(page):
-    # Wait for either a known unavailable page or a purchase control; no blind retries.
+    # A purchase button can remain during loading or alongside a sold-out notice.
+    page.wait_for_load_state('load', timeout=20000)
     page.locator('body').filter(has_text=re.compile('현재 판매가 중단된 상품|품절|구매하기|바로구매|바로 구매')).wait_for(timeout=20000)
+    page.wait_for_timeout(3000)
     text = page.locator('body').inner_text()
     title = page.title()
     buy_enabled = False
@@ -83,7 +85,20 @@ def check_hmall(page):
         for button in candidates.all():
             if button.is_visible() and button.is_enabled() and button.get_attribute('aria-disabled') != 'true' and button.get_attribute('disabled') is None:
                 buy_enabled = True
-    return {'hmall': hmall_status(text, title, buy_enabled)}
+    first = hmall_status(text, title, buy_enabled)
+    if not first:
+        return {'hmall': False}
+    # Require the positive signal to persist after another UI update.
+    page.wait_for_timeout(3000)
+    text = page.locator('body').inner_text()
+    still_enabled = any(
+        control.is_visible() and control.is_enabled()
+        and control.get_attribute('aria-disabled') != 'true'
+        and control.get_attribute('disabled') is None
+        for role in ['button', 'link']
+        for control in page.get_by_role(role, name=re.compile(r'^(바로구매|바로 구매|구매하기)$')).all()
+    )
+    return {'hmall': hmall_status(text, page.title(), still_enabled)}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -101,7 +116,9 @@ def main():
         browser = pw.chromium.launch()
         context = browser.new_context(locale='ko-KR')
         for shop, url in URLS.items():
-            page = context.new_page()
+            # Hmall's mobile product URL must be checked in a mobile context.
+            shop_context = browser.new_context(locale='ko-KR', **pw.devices['iPhone 13']) if shop == 'hmall' else context
+            page = shop_context.new_page()
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=35000)
                 if response is None or response.status >= 400:
@@ -118,6 +135,8 @@ def main():
                 print(f'::error::{shop} 재고 조회 실패 ({type(exc).__name__}). 이전 재고 상태 유지.')
             finally:
                 page.close()
+                if shop == 'hmall':
+                    shop_context.close()
         browser.close()
     if not args.dry_run:
         old = state.get('stock', {})
