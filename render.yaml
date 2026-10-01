@@ -1,12 +1,3 @@
-# Creates a paid worker only when explicitly deployed by the owner.
-services:
-  - type: worker
-    name: restock-discord-bot
-    runtime: docker
-    plan: starter
-    region: singapore
-    envVars:
-      - key: DISCORD_WEBHOOK_URL
-        sync: false
-      - key: CHECK_INTERVAL_SECONDS
-        value: '30'
+# Disabled: user requested free hosting only.
+# No paid Render services are configured or deployed.
+services: []
