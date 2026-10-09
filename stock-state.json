@@ -5,6 +5,8 @@
     "hmall": false
   },
   "baseline_observed": "2026-10-01 Asia/Seoul",
-  "last_check_utc": "2026-10-09T00:23:49.323802+00:00",
-  "failed_shops": []
+  "last_check_utc": "2026-10-09T06:23:44.231340+00:00",
+  "failed_shops": [
+    "hmall"
+  ]
 }
