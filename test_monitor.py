@@ -1,55 +1,41 @@
-import json
-import os
-from pathlib import Path
-import tempfile
 import unittest
-from unittest.mock import patch
-from monitor import URLS, WATCHED, PENDING_VERIFICATION, main, newly_available
+from monitor import URLS, WATCHED, naver_status, newly_available
 
-class ReplacementSafetyTests(unittest.TestCase):
-    def test_six_exact_requested_targets(self):
-        self.assertEqual({u.split('/')[-1] for u in URLS.values()}, {
-            '13698274396', '13697333976', '13733754793',
-            '13698276158', '13734519413', '13699099702'})
-        self.assertEqual(len(URLS), 6)
-
-    def test_retired_targets_removed(self):
-        self.assertFalse(any('kurly' in u or 'hmall' in u for u in URLS.values()))
-        self.assertEqual(newly_available({}, {'kurly:key': True, 'hmall': True}), [])
-
-    def test_unverified_targets_cannot_notify(self):
-        self.assertEqual(PENDING_VERIFICATION, WATCHED)
-        self.assertEqual(newly_available({}, {key: True for key in WATCHED}), [])
-
-    def test_replace_state_keeps_unknown_without_network_or_alerts(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / 'state.json'
-            path.write_text(json.dumps({'stock': {'kurly:key': True, 'hmall': True}}))
-            with patch('monitor.STATE_FILE', path), patch('sys.argv', ['monitor.py']), patch('monitor.send_discord') as send, patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}):
-                self.assertEqual(main(), 0)
-                send.assert_not_called()
-            state = json.loads(path.read_text())
-            self.assertEqual(set(state['stock']), WATCHED)
-            self.assertTrue(all(v is None for v in state['stock'].values()))
-            self.assertEqual(set(state['pending_verification']), WATCHED)
-
-    def test_dry_run_leaves_state_unchanged(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / 'state.json'
-            path.write_text('{"stock": {}}')
-            before = path.read_text()
-            with patch('monitor.STATE_FILE', path), patch('sys.argv', ['monitor.py', '--dry-run']), patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}):
-                self.assertEqual(main(), 0)
-            self.assertEqual(path.read_text(), before)
-
-    def test_summary_explicitly_says_alerts_paused(self):
-        with tempfile.TemporaryDirectory() as d:
-            summary = Path(d) / 'summary.md'
-            with patch('monitor.STATE_FILE', Path(d) / 'state.json'), patch('sys.argv', ['monitor.py', '--dry-run']), patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': str(summary)}):
-                main()
-            text = summary.read_text()
-            self.assertEqual(text.count('등록됨 · 재고 미확인 · 알림 중지'), 6)
-            self.assertNotIn('구매 가능', text)
-
-if __name__ == '__main__':
-    unittest.main()
+class NaverStockTests(unittest.TestCase):
+    key = 'naver:nuclearclub:13697333976'
+    title = '닌텐도 스위치2 엘든링 빛바랜 자 에디션 (한글판)'
+    def control(self, text='구매하기', enabled=True, visible=True):
+        return {'text': text, 'enabled': enabled, 'visible': visible}
+    def status(self, text='', controls=None, title=None, url=None):
+        return naver_status(self.key, url or URLS[self.key], title or self.title, text, controls or [])
+    def test_six_requested_ids(self):
+        self.assertEqual({u.split('/')[-1] for u in URLS.values()}, {'13698274396','13697333976','13733754793','13698276158','13734519413','13699099702'})
+    def test_no_retired_alerts(self):
+        self.assertEqual(newly_available({}, {'kurly:key': True,'hmall':True}), [])
+    def test_sold_out_overrides_buy(self):
+        self.assertFalse(self.status('현재 구매하실 수 없는 상품', [self.control()]))
+        self.assertFalse(self.status('', [self.control(),self.control('품절되었습니다', False)]))
+    def test_removed_product_is_unavailable(self):
+        self.assertFalse(self.status('상품이 존재하지 않습니다'))
+    def test_active_primary_buy(self):
+        self.assertTrue(self.status('', [self.control()]))
+    def test_disabled_buy_not_stock(self):
+        with self.assertRaises(ValueError): self.status('', [self.control(enabled=False)])
+    def test_hidden_buy_not_stock(self):
+        with self.assertRaises(ValueError): self.status('', [self.control(visible=False)])
+    def test_empty_panel_not_stock(self):
+        with self.assertRaises(ValueError): self.status()
+    def test_wrong_title_not_stock(self):
+        with self.assertRaises(ValueError): self.status('', [self.control()], title='다른 게임')
+    def test_wrong_url_not_stock(self):
+        with self.assertRaises(ValueError): self.status('', [self.control()], url=URLS[self.key].replace('13697333976','123'))
+    def test_security_and_network_error_not_stock(self):
+        for text in ['Please complete the security verification.', '현재 서비스 접속이 불가합니다.']:
+            with self.subTest(text=text), self.assertRaises(ValueError): self.status(text,[self.control()])
+    def test_duplicate_and_restock(self):
+        self.assertEqual(newly_available({self.key:True},{self.key:True}),[])
+        self.assertEqual(newly_available({self.key:False},{self.key:True}),[self.key])
+        self.assertEqual(newly_available({self.key:True},{}),[])
+    def test_english_product_title(self):
+        self.assertTrue(self.status('',[self.control()],title='[닌텐도 스위치2] ELDEN RING 빛바랜 자 에디션'))
+if __name__ == '__main__': unittest.main()
