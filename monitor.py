@@ -129,12 +129,13 @@ def main():
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=20000)
                 if response is None or response.status >= 400:
-                    raise ValueError('상품 페이지 응답 오류')
+                    raise ValueError('상품 페이지 응답 오류 HTTP ' + str(response.status if response else 'none'))
                 current[key] = check_naver(page, key)
                 print(LABELS[key], json.dumps({'stock': current[key]}, ensure_ascii=False))
-            except Exception:
+            except Exception as exc:
                 errors.append(key)
-                print(f'::warning::{LABELS[key]}: 조회 실패/재고 미확인. 이전 상태 유지, 알림 없음.')
+                reason = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+                print(f'::warning::{LABELS[key]}: 조회 실패/재고 미확인 ({reason}). 이전 상태 유지, 알림 없음.')
                 try:
                     text = page.locator('body').inner_text(timeout=3000).lower()
                     host_blocked = any(marker in text for marker in ['security verification', 'verify you are human', 'captcha', '비정상적인 접근', '접근이 제한'])
