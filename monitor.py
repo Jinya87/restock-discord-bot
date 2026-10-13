@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, urlencode, parse_qsl
 from urllib.request import Request, urlopen
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 URLS = {
     "naver:gamewoori:13698274396": "https://smartstore.naver.com/gamewoori/products/13698274396",
@@ -115,11 +115,14 @@ def main():
     # Remove retired targets and keep new targets explicitly unknown, not sold out.
     state['stock'] = {key: state.get('stock', {}).get(key) for key in WATCHED}
     current, errors = {}, []
+    cooldown = state.get('naver_retry_after_utc')
+    retry_after = datetime.fromisoformat(cooldown) if cooldown else None
+    cooling_down = bool(retry_after and retry_after > datetime.now(timezone.utc))
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         context = browser.new_context(locale='ko-KR')
-        host_blocked = False
+        host_blocked = cooling_down
         for key, url in URLS.items():
             if host_blocked:
                 errors.append(key)
@@ -128,6 +131,9 @@ def main():
             page = context.new_page()
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=20000)
+                if response is not None and response.status == 429:
+                    host_blocked = True
+                    state['naver_retry_after_utc'] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
                 if response is None or response.status >= 400:
                     raise ValueError('상품 페이지 응답 오류 HTTP ' + str(response.status if response else 'none'))
                 current[key] = check_naver(page, key)
@@ -138,7 +144,9 @@ def main():
                 print(f'::warning::{LABELS[key]}: 조회 실패/재고 미확인 ({reason}). 이전 상태 유지, 알림 없음.')
                 try:
                     text = page.locator('body').inner_text(timeout=3000).lower()
-                    host_blocked = any(marker in text for marker in ['security verification', 'verify you are human', 'captcha', '비정상적인 접근', '접근이 제한'])
+                    host_blocked = host_blocked or any(marker in text for marker in ['security verification', 'verify you are human', 'captcha', '비정상적인 접근', '접근이 제한'])
+                    if host_blocked and not cooling_down:
+                        state['naver_retry_after_utc'] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
                 except Exception:
                     pass
             finally:
@@ -167,10 +175,12 @@ def main():
             for key, value in current.items():
                 output.write(f'- {LABELS[key]}: {"구매 가능" if value else "품절/판매 중단"}\n')
             for shop in errors:
-                output.write(f'- {shop}: **조회 실패 — 재고 미확인**\n')
+                output.write(f'- {LABELS[shop]}: **조회 실패 — 재고 미확인**\n')
+            if state.get('naver_retry_after_utc'):
+                output.write('\n네이버 접근/요청 제한으로 1시간 대기 후 재시도합니다. 재고 알림은 보내지 않습니다.\n')
             if args.dry_run:
                 output.write('\n조회 테스트: 디스코드 전송과 상태 저장을 하지 않았습니다.\n')
-    return 1 if errors else 0
+    return 1 if errors and not cooling_down else 0
 
 if __name__ == '__main__':
     try:

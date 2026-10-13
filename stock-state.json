@@ -17,6 +17,7 @@
     "naver:pixeldreams:13699099702"
   ],
   "configuration_updated": "2026-10-13 Asia/Seoul",
-  "baseline_source": "Cloud browser: 4 sold out, 2 product unavailable; runner checks pending",
-  "last_check_utc": "2026-10-13T07:56:29.252034+00:00"
+  "baseline_source": "Cloud browser observations; GitHub runner HTTP 429 for all six targets",
+  "last_check_utc": "2026-10-13T07:56:29.252034+00:00",
+  "naver_retry_after_utc": "2026-10-13T08:56:29+00:00"
 }

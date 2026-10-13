@@ -38,4 +38,33 @@ class NaverStockTests(unittest.TestCase):
         self.assertEqual(newly_available({self.key:True},{}),[])
     def test_english_product_title(self):
         self.assertTrue(self.status('',[self.control()],title='[닌텐도 스위치2] ELDEN RING 빛바랜 자 에디션'))
+
+    def test_rate_limit_stops_host_and_skips_next_run(self):
+        import json
+        import os
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+        from monitor import main
+        pw = MagicMock()
+        pw.__enter__.return_value = pw
+        context = pw.chromium.launch.return_value.new_context.return_value
+        page = context.new_page.return_value
+        page.goto.return_value.status = 429
+        page.locator.return_value.inner_text.return_value = 'Too Many Requests'
+        modules = {'playwright': SimpleNamespace(), 'playwright.sync_api': SimpleNamespace(sync_playwright=lambda: pw)}
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / 'state.json'
+            with patch.dict('sys.modules', modules), patch('monitor.STATE_FILE',path), patch('sys.argv',['monitor.py']), patch.dict(os.environ,{'GITHUB_STEP_SUMMARY':''}), patch('monitor.send_discord') as send, patch('builtins.print'):
+                self.assertEqual(main(),1)
+                self.assertEqual(page.goto.call_count,1)
+                state = json.loads(path.read_text())
+                self.assertEqual(set(state['failed_shops']),WATCHED)
+                self.assertIn('naver_retry_after_utc',state)
+                page.goto.reset_mock()
+                self.assertEqual(main(),0)
+                page.goto.assert_not_called()
+                send.assert_not_called()
+
 if __name__ == '__main__': unittest.main()
