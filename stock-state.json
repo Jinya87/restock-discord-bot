@@ -1,14 +1,22 @@
 {
   "stock": {
-    "naver:gamewoori:13698274396": false,
-    "naver:nuclearclub:13697333976": false,
     "naver:playswitch:13733754793": false,
+    "naver:pixeldreams:13699099702": false,
     "naver:yepanrun:13698276158": false,
     "naver:bnek:13734519413": false,
-    "naver:pixeldreams:13699099702": false
+    "naver:gamewoori:13698274396": false,
+    "naver:nuclearclub:13697333976": false
   },
   "pending_verification": [],
-  "failed_shops": [],
+  "failed_shops": [
+    "naver:gamewoori:13698274396",
+    "naver:nuclearclub:13697333976",
+    "naver:playswitch:13733754793",
+    "naver:yepanrun:13698276158",
+    "naver:bnek:13734519413",
+    "naver:pixeldreams:13699099702"
+  ],
   "configuration_updated": "2026-10-13 Asia/Seoul",
-  "baseline_source": "Cloud browser: 4 sold out, 2 product unavailable; runner checks pending"
+  "baseline_source": "Cloud browser: 4 sold out, 2 product unavailable; runner checks pending",
+  "last_check_utc": "2026-10-13T07:53:00.432582+00:00"
 }
