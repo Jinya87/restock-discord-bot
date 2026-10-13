@@ -11,7 +11,7 @@ def run():
     started = subprocess.run([sys.executable, 'monitor.py', '--test-webhook'], check=False)
     if started.returncode:
         raise SystemExit('디스코드 연결 테스트 실패. 감시를 시작하지 않았습니다.')
-    print(f'키캡키링 / 아크릴 특전 감시 시작: 조회 완료 후 {interval}초 간격', flush=True)
+    print(f'네이버 상품 등록 상태 확인 시작 (검증 전 알림 중지): 조회 완료 후 {interval}초 간격', flush=True)
     while True:
         outcome = subprocess.run([sys.executable, 'monitor.py'], check=False)
         delay = interval if outcome.returncode == 0 else max(interval, 300)

@@ -1,38 +1,39 @@
-# 무료 재입고 알림봇
+# 무료 재고 알림봇
 
-컬리 1002589494 키캡키링만 / 현대Hmall 2253998733 아크릴 스탠드 특전만 감시합니다.
-데스크패드는 제외합니다. 자동 구매는 하지 않습니다.
+기존 컬리/Hmall 젤다 감시는 2026-10-13 제거했습니다.
+아래 네이버 6개 주소를 등록했습니다. **재고 조회 검증이 끝나지 않아 6개 모두 알림이 중지된 상태입니다.**
+등록 완료는 실제 재고 감시가 활성화되었다는 뜻이 아닙니다.
+
+- gamewoori: https://smartstore.naver.com/gamewoori/products/13698274396
+- nuclearclub: https://smartstore.naver.com/nuclearclub/products/13697333976
+- playswitch: https://smartstore.naver.com/playswitch/products/13733754793
+- yepanrun: https://smartstore.naver.com/yepanrun/products/13698276158
+- bnek: https://smartstore.naver.com/bnek/products/13734519413
+- pixeldreams: https://smartstore.naver.com/pixeldreams/products/13699099702
+
+## 검증 상태
+
+겜우리: 클라우드 브라우저에서 로딩 후 ‘상품이 존재하지 않습니다’ 표시.
+뉴클리어클럽/플레이스위치: 네이버 보안 인증 화면 표시.
+나머지 주소: 네이버 접근 제한으로 실판매 화면 미검증.
+GitHub 서버와 클라우드 브라우저는 서로 다른 인증 세션을 사용합니다.
+현재 판정기를 활성화하지 않았으며 재고가 존재하거나 품절이라고 가정하지 않습니다.
+stock-state.json에서 신규 상품의 재고는 null(미확인)입니다.
+로그인 쿠키/비밀번호/인증 토큰을 공개 저장소에 넣지 않습니다. 접근 제한을 우회하지 않습니다.
+검증 전에는 네이버 상품에 반복 조회 요청을 보내지 않습니다.
 
 ## 무료 운영
 
-공개 저장소의 표준 GitHub Actions 러너로 5분 간격 예약 실행합니다.
-실제 실행은 지연/누락될 수 있으며 짧은 재입고를 놓칠 수 있습니다. 실시간 감시는 아닙니다.
-비공개 상태에서는 예약 작업을 건너뜁니다. 유료 서버는 사용하지 않습니다.
-GitHub는 장기간 활동이 없는 공개 저장소의 예약 워크플로를 비활성화할 수 있으므로 Actions 상태를 주기적으로 확인하세요.
-
-## 연결
-
-Settings → Secrets and variables → Actions → New repository secret.
-Name: DISCORD_WEBHOOK_URL. Secret: 본인이 만든 Discord 웹훅을 직접 입력하세요.
-웹훅을 코드/채팅에 쓰지 마세요. 저장소가 공개되어도 Secret 값은 공개되지 않습니다.
-Actions → Restock Watch → Run workflow에서 test-webhook으로 알림 테스트, dry-run으로 실제 조회만 테스트할 수 있습니다.
-테스트 메시지는 재입고를 뜻하지 않습니다. Secret 등록과 공개 전환이 완료되어야 자동 알림을 보냅니다.
-
-## 판정과 한계
-
-컬리 키링 옵션에 가격이 있고 품절/disabled 표시가 없어야 구매 가능입니다.
-Hmall은 판매 중단이면 품절. 상품명이 시간의 오카리나+아크릴이고 활성 구매 버튼이 있어야 구매 가능입니다.
-Hmall 재판매 시 옵션 구조는 아직 실판매 화면에서 검증하지 못했습니다.
-빈 화면/오류/접근 제한은 재입고로 판정하지 않습니다. 사이트 제한은 우회하지 않습니다.
-구매 가능이 유지되면 중복 알림을 보내지 않고 품절 후 재입고하면 다시 알립니다.
-상태는 stock-state.json에 저장합니다. 상태 저장 실패 시 알림이 중복될 수 있습니다.
-2026-10-01 브라우저 확인: 컬리 키링 품절, Hmall 판매 중단.
-서버 러너의 사이트 접근과 실제 Discord 전송은 별도 검증이 필요합니다.
+공개 저장소의 표준 GitHub Actions 러너, 5분 예약 실행 설정을 유지합니다.
+검증 전 예약 실행은 등록/알림 중지 상태만 기록하며 재고 알림을 보내지 않습니다.
+실행 지연/누락이 있을 수 있으므로 실시간 알림은 보장하지 않습니다.
+유료 서버는 사용하지 않습니다.
 
 ## 검사
 
-python -m unittest -v : 판정/오류/중복 방지 10개 검사
-python monitor.py --dry-run : 실제 재고 조회만
-python monitor.py --test-webhook : Discord 테스트
-bot.py와 Dockerfile은 본인 서버가 있을 때 쓰는 선택적 실행 파일입니다. 무료 GitHub 방식에서는 사용하지 않습니다.
-render.yaml은 유료 배포를 막기 위해 비활성화했습니다.
+python -m unittest -v
+python monitor.py --dry-run
+
+--test-webhook은 재입고가 아닌 연결 테스트를 전송합니다.
+DISCORD_WEBHOOK_URL은 기존 GitHub Actions Secret을 사용합니다.
+재고 판정기 검증 후에만 알림을 활성화해야 합니다.
