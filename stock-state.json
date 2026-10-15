@@ -1,11 +1,11 @@
 {
   "stock": {
-    "naver:playswitch:13733754793": false,
-    "naver:yepanrun:13698276158": false,
-    "naver:nuclearclub:13697333976": false,
-    "naver:gamewoori:13698274396": false,
     "naver:pixeldreams:13699099702": false,
-    "naver:bnek:13734519413": false
+    "naver:nuclearclub:13697333976": false,
+    "naver:bnek:13734519413": false,
+    "naver:gamewoori:13698274396": false,
+    "naver:playswitch:13733754793": false,
+    "naver:yepanrun:13698276158": false
   },
   "pending_verification": [],
   "failed_shops": [
@@ -18,6 +18,6 @@
   ],
   "configuration_updated": "2026-10-13 Asia/Seoul",
   "baseline_source": "Cloud browser observations; GitHub runner HTTP 429 for all six targets",
-  "last_check_utc": "2026-10-15T11:45:21.012419+00:00",
-  "naver_retry_after_utc": "2026-10-15T12:45:20.971178+00:00"
+  "last_check_utc": "2026-10-15T15:46:10.257113+00:00",
+  "naver_retry_after_utc": "2026-10-15T16:46:10.217910+00:00"
 }
